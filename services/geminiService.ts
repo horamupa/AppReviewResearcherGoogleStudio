@@ -1,9 +1,106 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { AppAnalysisResult } from "../types";
 
+// Instructions derived from UXSkill.md
+const UX_SKILL_INSTRUCTION = `
+# iOS Product Designer
+
+Transform competitor analysis into actionable product specifications.
+
+## Analysis Process
+
+### Step 1: Extract Insights from Reviews
+Categorize review content into three buckets:
+- **Feature gaps**: "I wish it had...", "Missing...", "Would be great if..."
+- **Pain points**: "Frustrating...", "Annoying...", "Crashes when...", "Too slow..."
+- **Praised features**: "Love the...", "Best part is...", "Finally an app that..."
+
+### Step 2: Map Competitor Features
+From the app description, extract: Core functionality, Target user segment, Key value proposition, Feature set.
+
+### Step 3: Define Superior Product
+For each insight category, determine product response:
+- **Feature gaps** → New features to include
+- **Pain points** → Problems to solve differently
+- **Praised features** → Match or exceed
+
+## Output: PRD Document
+
+Generate markdown PRD with these sections in order:
+
+# [App Name] — Product Requirements Document
+
+## 1. Overview
+Brief description of the app concept and how it improves on the competitor.
+
+## 2. Value Proposition
+Single clear statement of why users choose this over alternatives.
+
+## 3. Target Users
+### Primary Persona
+- Name, age range, occupation
+- Goals and motivations
+- Current frustrations (from review analysis)
+
+### Secondary Persona (if applicable)
+
+## 4. Core Features
+List features organized by priority:
+### Must Have (MVP)
+### Should Have (v1.1)
+### Nice to Have (Future)
+
+## 5. Information Architecture
+### App Structure (Tree format)
+### Data Model (conceptual)
+
+## 6. User Journeys
+### Journey 1: [Primary Task]
+1. User opens app → sees [what]
+2. User taps [element] → [result]
+3. Continue flow...
+4. End state: [outcome]
+
+### Journey 2: [Secondary Task]
+
+## 7. Screen-by-Screen Specifications
+
+### Screen: [Name]
+**Purpose:** Why this screen exists
+**Entry points:** How users arrive here
+**Layout:**
+- Top/Middle/Bottom section details
+**Elements:**
+- Element 1: Type, purpose, behavior
+**Actions available:**
+- Action 1 → leads to [screen/result]
+**Exit points:** Where users go next
+
+(Repeat for each screen)
+
+## 8. UX Principles
+Guiding principles for this product.
+
+## UX Design Philosophy
+- **Minimalism** — Every element must earn its place; remove until it breaks
+- **Bauhaus influence** — Form follows function; clear visual hierarchy; geometric clarity
+- **60-30-10 color rule** — 60% dominant neutral, 30% secondary, 10% accent for actions
+- **Purposeful animation** — Motion only for feedback, transitions, or directing attention; never decorative
+
+## Quality Checklist
+- [ ] Every feature gap from reviews is addressed
+- [ ] Every pain point has a solution
+- [ ] Praised competitor features are matched or improved
+- [ ] Each screen has clear purpose and exit points
+- [ ] User journeys cover primary tasks end-to-end
+- [ ] Information architecture is max 3 levels deep
+`;
+
 const SYSTEM_INSTRUCTION = `
 You are an expert Product Manager and Market Analyst with a specialization in Mobile Applications.
 Your goal is to analyze specific App Store applications to understand user sentiment and identify market gaps.
+
+${UX_SKILL_INSTRUCTION}
 
 When provided with an App Store link, you must:
 1. Use Google Search to find user reviews, ratings, Reddit discussions, and tech articles about this specific app.
@@ -12,7 +109,7 @@ When provided with an App Store link, you must:
 4. Identify the specific features users rave about.
 5. Identify the specific pain points, bugs, or missing features users complain about.
 6. Formulate a set of "PRD Generation Rules". This is the logic/methodology you used. For example: "Since 40% of users complained about X, Rule #1 is to fix X."
-7. Synthesize a "Killer App" concept (PRD) based on these rules.
+7. Synthesize a "Killer App" concept (PRD) STRICTLY FOLLOWING the structure defined in "Output: PRD Document" above.
 `;
 
 const responseSchema: Schema = {
@@ -62,7 +159,7 @@ const responseSchema: Schema = {
     },
     competitorPrdMarkdown: {
       type: Type.STRING,
-      description: "A complete PRD (Product Requirement Document) and Elevator Pitch in Markdown format. Include: 1. Elevator Pitch. 2. Core Value Proposition. 3. Key Differentiators. 4. MVP Feature List. 5. Go-to-Market Strategy.",
+      description: "A complete PRD (Product Requirement Document) in Markdown format. MUST follow the 'Output: PRD Document' structure from the system instructions exactly.",
     },
     prdRulesMarkdown: {
       type: Type.STRING,
@@ -85,7 +182,9 @@ export const analyzeAppUrl = async (url: string): Promise<AppAnalysisResult> => 
       model: 'gemini-3-pro-preview',
       contents: `Please analyze this App Store URL: ${url}. 
       Read and analyze at least 150 reviews if possible.
-      Summarize likes/dislikes, return the raw reviews you found significant, define your PRD rules, and write the PRD.`,
+      Summarize likes/dislikes, return the raw reviews you found significant, define your PRD rules.
+      
+      Finally, write the PRD by STRICTLY following the "iOS Product Designer" and "Output: PRD Document" sections in your system instructions.`,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
