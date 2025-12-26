@@ -1,0 +1,5 @@
+{
+  "name": "AppInsight Analyzer",
+  "description": "Analyzes Apple App Store links to summarize user sentiment and generate competitor PRDs using Gemini AI.",
+  "requestFramePermissions": []
+}
